@@ -37,6 +37,7 @@ class TaskController extends Controller
         ]);
 
         return Response::json([
+            'code' => 200,
             'message' => 'Task Added',
             'task'=> $task
         ]);
@@ -69,6 +70,7 @@ class TaskController extends Controller
         $task->update($request->all());
         
         return Response::json([
+            'code' => 200,
             'message' => 'Massege Updated',
             'new Task' => $task,
         ]);
@@ -88,9 +90,11 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         // return $task;
         $task->delete();
-
+        
         return Response::json([
-            'message' => 'Massege Deleted'
+            'code' => 200,
+            'message' => 'Task Deleted',
+            'data' => [],
         ]);
     }
 }

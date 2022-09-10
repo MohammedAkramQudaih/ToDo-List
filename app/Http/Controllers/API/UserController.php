@@ -5,7 +5,12 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Mail\forgetPasswordMail;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Response;
@@ -107,7 +112,7 @@ class UserController extends Controller
     {
 
         $user = User::where('email', $request->email)->first();
-        // return $user;
+        // return $user['email_verified_at'];
         if (!$user || !Hash::check($request->password, $user->password)) {
             return Response::json([
                 'code' => 400,
@@ -170,9 +175,9 @@ class UserController extends Controller
 
         $user = $request->user();
 
-        if (Hash::check($request->password , $user->password)) {
+        if (Hash::check($request->password, $user->password)) {
             $user->update([
-                'name'=>  $request->newName,
+                'name' =>  $request->newName,
             ]);
             return Response::json($user);
         }
@@ -183,28 +188,69 @@ class UserController extends Controller
 
     public function forgetPassword(Request $request)
     {
-        // return $request->email;
-        
-       Mail::to($request->email)->send(new forgetPasswordMail);
-       return Response::json([
-        'reset password'=>url(route('resetPassword'))
-       ]);
+        Mail::to($request->email)->send(new forgetPasswordMail);
+
+        return Response::json([
+            'code' => 200,
+            'reset password' => url(route('resetPassword')),
+            'data' => [],
+        ]);
     }
 
 
 
     public function resetPassword(Request $request)
     {
-        $newPassword=$request->password;
-    
+        $newPassword = $request->password;
+
         $user = User::where('email', $request->email)->first();
 
         $user->update([
-            'password'=>Hash::make($newPassword),
+            'password' => Hash::make($newPassword),
         ]);
+        return Response::json([
+            'code' => 200,
+            'message' => 'Password Updated',
+            'data' => [],
+        ]);
+    }
+
+    public function sendVEmail(Request $request)
+    {
+
+        if ($request->user()->hasVerifiedEmail()) {
+            return Response::json([
+                'code' => 201,
+                'message' => 'Already Verified',
+                'data' => [],
+            ]);
+        }
+        $request->user()->sendEmailVerificationNotification();
 
         return Response::json([
-            'message'=>'Password Updated'
+            'code' => 200,
+            'message' => 'verification-link-sent',
+            'data' => [],
         ]);
+    }
+    public function verifyEmail(Request $request)
+    {
+        if (!auth()->check()) {
+            auth()->loginUsingId($request->route('id'));
+        }
+
+        if ($request->route('id') != $request->user()->getKey()) {
+            throw new AuthorizationException();
+        }
+
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect($this->redirectPath());
+        }
+
+        if ($request->user()->markEmailAsVerified()) {
+            event(new Verified($request->user()));
+        }
+
+        return 'success';
     }
 }

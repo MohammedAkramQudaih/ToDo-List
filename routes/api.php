@@ -16,16 +16,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware('auth:sanctum','verified')->get('/user', function (Request $request) {
     return $request->user();
 });
 Route::post('/register', [UserController::class,'register'])->name('register');
 Route::post('/login', [UserController::class,'login'])->name('login');
 Route::get('/logout', [UserController::class,'logout'])->name('logout')->middleware('auth:sanctum');
-Route::post('/change_password', [UserController::class,'changePassword'])->name('changePassword')->middleware('auth:sanctum');
-Route::post('/change_name', [UserController::class,'changeName'])->name('changeName')->middleware('auth:sanctum');
-Route::post('/forget_password', [UserController::class,'forgetPassword'])->name('forgetPassword');
-Route::post('/reset_password', [UserController::class,'resetPassword'])->name('resetPassword');
+Route::post('/change_password', [UserController::class,'changePassword'])->name('changePassword')->middleware('auth:sanctum','verified');
+Route::post('/change_name', [UserController::class,'changeName'])->name('changeName')->middleware('auth:sanctum','verified');
+Route::post('/forget_password', [UserController::class,'forgetPassword'])->name('forgetPassword','verified');
+Route::post('/reset_password', [UserController::class,'resetPassword'])->name('resetPassword','verified');
+
+Route::get('send_email',[UserController::class,'sendVEmail'])->name('sendVEmail')->middleware('auth:sanctum');
+Route::get('verify_email',[UserController::class,'verifyEmail'])->name('verification.verify');
+
+
 
 
 
