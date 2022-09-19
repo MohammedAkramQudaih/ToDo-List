@@ -6,19 +6,30 @@ use App\Http\Controllers\Controller;
 use App\Mail\forgetPasswordMail;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password as FacadesPassword;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
 
 class UserController extends Controller
 {
+
+    public function user(Request $request)
+    {
+        return $request->user();
+    }
     /**
      * Display a listing of the resource.
      *
@@ -188,34 +199,98 @@ class UserController extends Controller
 
     public function forgetPassword(Request $request)
     {
-        Mail::to($request->email)->send(new forgetPasswordMail);
+
+        $request->validate(['email' => 'required|email']);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        // return Password::RESET_LINK_SENT ;
+        //     ? back()->with(['status' => __($status)])
+        //     : back()->withErrors(['email' => __($status)]);
+
+
+        // Mail::to($request->email)->send(new forgetPasswordMail);
 
         return Response::json([
             'code' => 200,
-            'reset password' => url(route('resetPassword')),
+            // 'reset password' => url(route('resetPassword')),
+            'msg' => "succ",
             'data' => [],
         ]);
     }
 
 
 
-    public function resetPassword(Request $request)
+    public function resetPassword()
     {
-        $newPassword = $request->password;
-
-        $user = User::where('email', $request->email)->first();
-
-        $user->update([
-            'password' => Hash::make($newPassword),
-        ]);
         return Response::json([
-            'code' => 200,
-            'message' => 'Password Updated',
-            'data' => [],
+            'code'=>200,
+            'message'=>'success',
+            'data'=>[
+                'token'=>request()->token,
+            ],
+            
+
         ]);
+
+    //     $status = Password::reset(
+
+
+    //         $request->only('password',),
+    //         function ($user, $password) {
+    //             $user->forceFill([
+    //                 'password' => Hash::make($password)
+    //             ]);
+     
+    //             $user->save();
+    //  return 'fghjkl';
+    //             return event(new PasswordReset($user));
+    //         }
+    //     );
+    //    return 'ah';
+    //     return $status === Password::PASSWORD_RESET
+    //                 ? redirect()->route('login')->with('status', __($status))
+    //                 : back()->withErrors(['email' => [__($status)]]);
+
+
+//---------------------------------------------------------------------------------------------------------------------
+        // $newPassword = $request->newPassword;
+
+        // $user = User::where('email', $request->email)->first();
+
+        // $user->update([
+        //     'password' => Hash::make($newPassword),
+        // ]);
+        // return Response::json([
+        //     'code' => 200,
+        //     'message' => 'Password Updated',
+        //     'data' => [],
+        // ]);
     }
 
-    public function sendVEmail(Request $request)
+    public function newPassword(Request $request)
+    {
+        $newPassword=$request->newPassword;
+        // $token = Hash::make($request->token);
+
+        $token = Crypt::decryptString($request->token);
+        return $token;
+        
+
+        $result = DB::Table('password_resets')->select('email')->where('token',$token)->get();  
+        // return $result;
+        
+        return DB::table('password_resets')->get();
+        // ->where([
+        //   'token' => $request->token
+        // ])
+        // ->first();
+;
+    }
+
+    public function sendVerificationEmail(Request $request)
     {
 
         if ($request->user()->hasVerifiedEmail()) {
@@ -252,5 +327,10 @@ class UserController extends Controller
         }
 
         return 'success';
+    }
+
+    public function sendForgetPasswordEmail()
+    {
+        # code...
     }
 }
